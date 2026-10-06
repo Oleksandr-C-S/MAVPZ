@@ -1,0 +1,46 @@
+erDiagram
+    USER ||--o{ BOOKING : creates
+    BUILDING ||--o{ ROOM : contains
+    ROOM ||--o{ BOOKING : reserved_for
+    ROOM ||--o{ ROOM_EQUIPMENT : has
+    EQUIPMENT ||--o{ ROOM_EQUIPMENT : installed_as
+
+    USER {
+        int user_id PK
+        string full_name
+        string email UK
+    }
+
+    BUILDING {
+        int building_id PK
+        string name
+        string address
+    }
+
+    ROOM {
+        int room_id PK
+        int building_id FK
+        string room_number
+        int capacity
+    }
+
+    BOOKING {
+        int booking_id PK
+        int user_id FK
+        int room_id FK
+        datetime starts_at
+        datetime ends_at
+        string purpose
+        string status
+    }
+
+    EQUIPMENT {
+        int equipment_id PK
+        string name
+    }
+
+    ROOM_EQUIPMENT {
+        int room_id PK, FK
+        int equipment_id PK, FK
+        int quantity
+    }
