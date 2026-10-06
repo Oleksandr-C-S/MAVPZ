@@ -1,4 +1,6 @@
 erDiagram
+    %% Constraint: UNIQUE(ROOM.building_id, ROOM.room_number)
+
     USER ||--o{ BOOKING : creates
     BUILDING ||--o{ ROOM : contains
     ROOM ||--o{ BOOKING : reserved_for
