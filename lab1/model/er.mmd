@@ -2,6 +2,7 @@ erDiagram
     %% Constraint: UNIQUE(ROOM.building_id, ROOM.room_number)
     %% Constraint: BOOKING.starts_at < BOOKING.ends_at
     %% Constraint: active bookings for the same ROOM must not overlap in time
+    %% Constraint: ROOM_EQUIPMENT.quantity > 0
 
     USER ||--o{ BOOKING : creates
     BUILDING ||--o{ ROOM : contains
