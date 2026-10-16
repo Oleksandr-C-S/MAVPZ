@@ -1,12 +1,13 @@
 erDiagram
-    %% Constraint: UNIQUE(ROOM.building_id, ROOM.room_number)
-    %% Constraint: BOOKING.starts_at < BOOKING.ends_at
-    %% Constraint: active bookings for the same ROOM must not overlap in time
-    %% Constraint: ROOM_EQUIPMENT.quantity > 0
+    %% UNIQUE(ROOM.building_id, ROOM.room_number)
+    %% BOOKING.starts_at < BOOKING.ends_at
+    %% ROOM_EQUIPMENT.quantity > 0
+    %% Bookings for the same room must not overlap when BOOKING_STATUS.blocks_room = true
 
     USER ||--o{ BOOKING : creates
-    BUILDING ||--o{ ROOM : contains
+    BUILDING ||--|{ ROOM : contains
     ROOM ||--o{ BOOKING : reserved_for
+    BOOKING_STATUS ||--o{ BOOKING : assigned_to
     ROOM ||--o{ ROOM_EQUIPMENT : has
     EQUIPMENT ||--o{ ROOM_EQUIPMENT : installed_as
 
@@ -33,15 +34,21 @@ erDiagram
         int booking_id PK
         int user_id FK
         int room_id FK
+        int status_id FK
         datetime starts_at
         datetime ends_at
         string purpose
-        string status
+    }
+
+    BOOKING_STATUS {
+        int status_id PK
+        string name UK
+        boolean blocks_room
     }
 
     EQUIPMENT {
         int equipment_id PK
-        string name
+        string name UK
     }
 
     ROOM_EQUIPMENT {
