@@ -1,0 +1,35 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Користувач" as User
+actor "Студент" as Student
+actor "Викладач" as Teacher
+actor "Сервіс автентифікації\nуніверситету" as Auth <<external>>
+
+Student -|> User
+Teacher -|> User
+
+rectangle "Система бронювання аудиторій" {
+  usecase "UC-01\nПереглянути доступні\nаудиторії" as UC01
+  usecase "UC-02\nСтворити бронювання" as UC02
+  usecase "UC-03\nСкасувати бронювання" as UC03
+  usecase "UC-04\nПереглянути мої\nбронювання" as UC04
+  usecase "UC-05\nФільтрувати за\nобладнанням" as UC05
+  usecase "UC-06\nАвтентифікувати\nкористувача" as UC06
+  usecase "UC-07\nПеревірити доступність\nаудиторії" as UC07
+}
+
+User --> UC01
+User --> UC02
+User --> UC03
+User --> UC04
+Auth --> UC06
+
+UC01 ..> UC07 : <<include>>
+UC02 ..> UC06 : <<include>>
+UC02 ..> UC07 : <<include>>
+UC03 ..> UC06 : <<include>>
+UC04 ..> UC06 : <<include>>
+UC05 ..> UC01 : <<extend>>
+@enduml
