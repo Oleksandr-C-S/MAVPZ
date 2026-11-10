@@ -1,0 +1,69 @@
+@startuml
+' Lab3 — UC-02 / SC-02: Успішне створення бронювання
+' Чернетка для аналізу та перевірки студентом
+
+title UC-02 / SC-02 — Успішне створення бронювання
+
+autonumber
+actor "Користувач" as User
+boundary "Інтерфейс бронювання" as UI
+control "BookingService" as Service
+participant "Університетський сервіс\nавтентифікації" as Auth
+participant "BookingRepository" as Repo
+database "База даних\n(User, Room, Booking, BookingStatus)" as DB
+
+note over User,DB
+Передумови SC-02 (Lab2): користувач автентифікований;
+Room 301 доступна з 10:00 до 11:00.
+Результат пошуку не резервує аудиторію.
+end note
+
+User -> UI : confirmBooking(roomId=301, 10:00, 11:00)
+activate UI
+UI -> Service : createBooking(session, 301, 10:00, 11:00)
+activate Service
+Service -> Auth : validateSession(session)
+activate Auth
+Auth --> Service : userId (дійсна сесія)
+deactivate Auth
+
+Service -> Repo : beginAtomicBooking(301, 10:00, 11:00)
+activate Repo
+Repo -> DB : beginTransactionAndLockRoom(301)
+activate DB
+DB --> Repo : transactionOpened
+Repo -> DB : findBlockingBookings(301, 10:00, 11:00)
+DB --> Repo : [] (немає перетинів)
+Repo --> Service : available=true
+
+alt аудиторія доступна (основний шлях SC-02)
+    Service -> Repo : insertBooking(userId, 301, 10:00, 11:00, Pending)
+    Repo -> DB : INSERT Booking(user_id, room_id, starts_at, ends_at, status_id)
+    DB --> Repo : bookingId
+    Repo -> DB : commitTransaction()
+    DB --> Repo : committed
+    Repo --> Service : bookingCreated(bookingId)
+else конфлікт на актуальних даних (захисна гілка; SC-03/SC-07)
+    Service -> Repo : rollbackTransaction()
+    Repo -> DB : rollbackTransaction()
+    DB --> Repo : rolledBack
+    Repo --> Service : bookingNotCreated
+end
+
+deactivate DB
+deactivate Repo
+alt бронювання створене
+    Service --> UI : bookingCreated(bookingId)
+    UI --> User : showConfirmation(bookingId)
+else бронювання не створене
+    Service --> UI : bookingConflict()
+    UI --> User : showConflictMessage()
+end
+deactivate Service
+deactivate UI
+
+note bottom of DB
+Технічний механізм блокування — пропозиція для моделювання.
+В Lab2 визначено атомарність, але не конкретний спосіб її реалізації.
+end note
+@enduml
