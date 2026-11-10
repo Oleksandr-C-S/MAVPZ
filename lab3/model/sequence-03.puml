@@ -1,0 +1,117 @@
+@startuml
+' Lab3 — UC-02 / SC-07: Втрата доступності між пошуком і підтвердженням
+' Чернетка діаграми, узгоджена з lab2/gherkin.md (SC-07)
+
+title UC-02 / SC-07 — Аудиторію зайняли після пошуку
+
+autonumber
+actor "Перший користувач" as User1
+actor "Інший користувач" as User2
+boundary "Інтерфейс бронювання" as UI
+control "BookingService" as Service
+participant "Університетський сервіс\nавтентифікації" as Auth
+participant "BookingRepository" as Repo
+database "База даних\n(Room, Booking, BookingStatus)" as DB
+
+note over User1,DB
+SC-07 (Lab2): перший користувач побачив Room 301
+як вільну на 10:00–11:00, але до підтвердження
+інший користувач створив блокуюче бронювання.
+end note
+
+== 1. Пошук: аудиторія спочатку вільна ==
+User1 -> UI : searchRooms(10:00, 11:00)
+activate UI
+UI -> Service : findAvailableRooms(10:00, 11:00)
+activate Service
+Service -> Repo : findRoomsWithoutBlockingBookings(10:00, 11:00)
+activate Repo
+Repo -> DB : SELECT Room, Booking, BookingStatus
+activate DB
+DB --> Repo : [Room(301), ...]
+deactivate DB
+Repo --> Service : [Room(301), ...]
+deactivate Repo
+Service --> UI : availableRooms([301, ...])
+deactivate Service
+UI --> User1 : showSearchResults([301, ...])
+deactivate UI
+
+== 2. Інший користувач займає аудиторію ==
+User2 -> UI : confirmBooking(301, 10:00, 11:00)
+activate UI
+UI -> Service : createBooking(session2, 301, 10:00, 11:00)
+activate Service
+Service -> Auth : validateSession(session2)
+activate Auth
+Auth --> Service : validSession(userId2)
+deactivate Auth
+Service -> Repo : beginAtomicBooking(301, 10:00, 11:00)
+activate Repo
+Repo -> DB : beginTransactionAndLockRoom(301)
+activate DB
+DB --> Repo : transactionOpened
+Repo -> DB : findBlockingBookings(301, 10:00, 11:00)
+DB --> Repo : []
+Repo --> Service : available=true
+Service -> Repo : insertBooking(userId2, 301, 10:00, 11:00, Confirmed)
+Repo -> DB : INSERT Booking(...)
+DB --> Repo : bookingId2
+Repo -> DB : commitTransaction()
+DB --> Repo : committed
+Repo --> Service : bookingCreated(bookingId2)
+deactivate DB
+deactivate Repo
+Service --> UI : bookingCreated(bookingId2)
+deactivate Service
+UI --> User2 : showConfirmation(bookingId2)
+deactivate UI
+
+== 3. Перший користувач підтверджує старий результат ==
+User1 -> UI : confirmBooking(301, 10:00, 11:00)
+activate UI
+UI -> Service : createBooking(session1, 301, 10:00, 11:00)
+activate Service
+Service -> Auth : validateSession(session1)
+activate Auth
+Auth --> Service : validSession(userId1)
+deactivate Auth
+Service -> Repo : beginAtomicBooking(301, 10:00, 11:00)
+activate Repo
+Repo -> DB : beginTransactionAndLockRoom(301)
+activate DB
+DB --> Repo : transactionOpened
+Repo -> DB : findBlockingBookings(301, 10:00, 11:00)
+DB --> Repo : [Booking(bookingId2, Confirmed, blocks_room=true)]
+Repo --> Service : blockingBookingsFound
+
+alt доступність втрачено (основний шлях SC-07)
+    Service -> Repo : rollbackTransaction()
+    Repo -> DB : rollbackTransaction()
+    DB --> Repo : rolledBack
+    Repo --> Service : noBookingCreated
+    Service --> UI : roomNoLongerAvailable(301)
+    UI --> User1 : showAvailabilityLostMessage()
+else аудиторія все ще вільна (альтернативний шлях)
+    Service -> Repo : insertBooking(userId1, 301, 10:00, 11:00, Pending)
+    Repo -> DB : INSERT Booking(...)
+    DB --> Repo : bookingId1
+    Repo -> DB : commitTransaction()
+    DB --> Repo : committed
+    Repo --> Service : bookingCreated(bookingId1)
+    Service --> UI : bookingCreated(bookingId1)
+    UI --> User1 : showConfirmation(bookingId1)
+end
+
+deactivate DB
+deactivate Repo
+deactivate Service
+deactivate UI
+
+note over Service,DB
+Повторна перевірка не покладається на результати пошуку.
+У головній гілці SC-07 Booking для першого користувача
+не створюється. Блокування рядка Room — лише
+запропонований механізм реалізації атомарності.
+end note
+@enduml
