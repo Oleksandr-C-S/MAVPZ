@@ -1,0 +1,69 @@
+@startuml
+' Lab3 — UC-02 / SC-03: Конфлікт при підтвердженні
+' Технічна чернетка: звірити з lab2/gherkin.md і lab2/requirements.md
+
+title UC-02 / SC-03 — Конфлікт бронювання
+
+autonumber
+actor "Користувач" as User
+boundary "Інтерфейс бронювання" as UI
+control "BookingService" as Service
+participant "Університетський сервіс\nавтентифікації" as Auth
+participant "BookingRepository" as Repo
+database "База даних\n(Room, Booking, BookingStatus)" as DB
+
+note over User,DB
+За SC-03 у Lab2: користувач автентифікований.
+Для Room 301 уже є Confirmed Booking 10:00–11:00.
+Користувач запитує 10:30–11:30 (інтервали перетинаються).
+end note
+
+User -> UI : confirmBooking(roomId=301, 10:30, 11:30)
+activate UI
+UI -> Service : createBooking(session, 301, 10:30, 11:30)
+activate Service
+Service -> Auth : validateSession(session)
+activate Auth
+Auth --> Service : validSession(userId)
+deactivate Auth
+
+Service -> Repo : beginAtomicBooking(301, 10:30, 11:30)
+activate Repo
+Repo -> DB : beginTransactionAndLockRoom(301)
+activate DB
+DB --> Repo : transactionOpened
+Repo -> DB : findBlockingBookings(301, 10:30, 11:30)
+DB --> Repo : [Booking(Confirmed, 10:00–11:00, blocks_room=true)]
+Repo --> Service : blockingBookingsFound
+
+alt блокуюче бронювання перетинається (основний шлях SC-03)
+    Service -> Repo : rollbackTransaction()
+    Repo -> DB : rollbackTransaction()
+    DB --> Repo : rolledBack
+    Repo --> Service : noBookingCreated
+    Service --> UI : bookingConflict(roomId=301)
+    UI --> User : showConflictMessage()
+else немає перетину (захисна альтернативна гілка; не SC-03)
+    Service -> Repo : insertBooking(userId, 301, 10:30, 11:30, Pending)
+    Repo -> DB : INSERT Booking(...)
+    DB --> Repo : bookingId
+    Repo -> DB : commitTransaction()
+    DB --> Repo : committed
+    Repo --> Service : bookingCreated(bookingId)
+    Service --> UI : bookingCreated(bookingId)
+    UI --> User : showConfirmation(bookingId)
+end
+
+deactivate DB
+deactivate Repo
+deactivate Service
+deactivate UI
+
+note bottom of DB
+У головній гілці SC-03 нового Booking немає.
+Перетин напіввідкритих інтервалів [start, end):
+start1 < end2 AND start2 < end1.
+Механізм блокування — проєктна пропозиція,
+а не технічна вимога з Lab2.
+end note
+@enduml
