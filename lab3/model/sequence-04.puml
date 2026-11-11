@@ -1,0 +1,80 @@
+@startuml
+' Lab3 — UC-02 / SC-08: Суміжні інтервали дозволені
+' Основа: lab2/gherkin.md — SC-08
+
+title UC-02 / SC-08 — Суміжні інтервали без конфлікту
+
+autonumber
+actor "Користувач" as User
+boundary "Інтерфейс бронювання" as UI
+control "BookingService" as Service
+participant "Університетський сервіс\nавтентифікації" as Auth
+participant "BookingRepository" as Repo
+database "База даних\n(Room, Booking, BookingStatus)" as DB
+
+note over User,DB
+Передумови SC-08: користувач автентифікований.
+Room 301 має блокуюче бронювання 10:00–11:00.
+Користувач підтверджує нове бронювання 11:00–12:00.
+Інтервали розглядаються як [початок, кінець).
+end note
+
+User -> UI : confirmBooking(301, 11:00, 12:00)
+activate UI
+UI -> Service : createBooking(session, 301, 11:00, 12:00)
+activate Service
+Service -> Auth : validateSession(session)
+activate Auth
+Auth --> Service : validSession(userId)
+deactivate Auth
+
+Service -> Repo : beginAtomicBooking(301, 11:00, 12:00)
+activate Repo
+Repo -> DB : beginTransactionAndLockRoom(301)
+activate DB
+DB --> Repo : transactionOpened
+Repo -> DB : findBlockingBookings(301, 11:00, 12:00)
+DB --> Repo : [] (10:00–11:00 не перетинається)
+Repo --> Service : available=true
+
+note over Service,DB
+Перетин існує лише коли
+newStart < oldEnd AND oldStart < newEnd.
+Для 11:00–12:00 і 10:00–11:00:
+11:00 < 11:00 — false, отже конфлікту немає.
+end note
+
+alt немає перетину (основний шлях SC-08)
+    Service -> Repo : insertBooking(userId, 301, 11:00, 12:00, Pending)
+    Repo -> DB : INSERT Booking(user_id, room_id, starts_at, ends_at, status_id)
+    DB --> Repo : bookingId
+    Repo -> DB : commitTransaction()
+    DB --> Repo : committed
+    Repo --> Service : bookingCreated(bookingId)
+else знайдено реальний перетин (захисна гілка)
+    Service -> Repo : rollbackTransaction()
+    Repo -> DB : rollbackTransaction()
+    DB --> Repo : rolledBack
+    Repo --> Service : bookingNotCreated
+end
+
+deactivate DB
+deactivate Repo
+
+alt бронювання створено
+    Service --> UI : bookingCreated(bookingId)
+    UI --> User : showConfirmation(bookingId)
+else бронювання відхилено
+    Service --> UI : bookingConflict()
+    UI --> User : showConflictMessage()
+end
+
+deactivate Service
+deactivate UI
+
+note bottom of DB
+Атомарність передбачена вимогами Lab2.
+Блокування Room показане як можливий спосіб реалізації,
+а не як уже затверджене технічне рішення.
+end note
+@enduml
