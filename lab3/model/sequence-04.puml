@@ -72,7 +72,7 @@ end
 deactivate Service
 deactivate UI
 
-note bottom of DB
+note over Repo,DB
 Атомарність передбачена вимогами Lab2.
 Блокування Room показане як можливий спосіб реалізації,
 а не як уже затверджене технічне рішення.

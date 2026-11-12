@@ -59,7 +59,7 @@ deactivate Repo
 deactivate Service
 deactivate UI
 
-note bottom of DB
+note over Repo,DB
 У головній гілці SC-03 нового Booking немає.
 Перетин напіввідкритих інтервалів [start, end):
 start1 < end2 AND start2 < end1.

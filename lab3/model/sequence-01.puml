@@ -62,7 +62,7 @@ end
 deactivate Service
 deactivate UI
 
-note bottom of DB
+note over Repo,DB
 Технічний механізм блокування — пропозиція для моделювання.
 В Lab2 визначено атомарність, але не конкретний спосіб її реалізації.
 end note
