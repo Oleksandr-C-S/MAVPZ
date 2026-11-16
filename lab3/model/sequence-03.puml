@@ -54,7 +54,7 @@ DB --> Repo : transactionOpened
 Repo -> DB : findBlockingBookings(301, 10:00, 11:00)
 DB --> Repo : []
 Repo --> Service : available=true
-Service -> Repo : insertBooking(userId2, 301, 10:00, 11:00, Confirmed)
+Service -> Repo : insertBooking(userId2, 301, 10:00, 11:00, Pending)
 Repo -> DB : INSERT Booking(...)
 DB --> Repo : bookingId2
 Repo -> DB : commitTransaction()
@@ -82,7 +82,7 @@ Repo -> DB : beginTransactionAndLockRoom(301)
 activate DB
 DB --> Repo : transactionOpened
 Repo -> DB : findBlockingBookings(301, 10:00, 11:00)
-DB --> Repo : [Booking(bookingId2, Confirmed, blocks_room=true)]
+DB --> Repo : [Booking(bookingId2, Pending, blocks_room=true)]
 Repo --> Service : blockingBookingsFound
 
 alt доступність втрачено (основний шлях SC-07)
@@ -111,7 +111,8 @@ deactivate UI
 note over Service,DB
 Повторна перевірка не покладається на результати пошуку.
 У головній гілці SC-07 Booking для першого користувача
-не створюється. Блокування рядка Room — лише
+не створюється. Початковий статус Pending використано послідовно в UC-02.
+Блокування рядка Room — лише
 запропонований механізм реалізації атомарності.
 end note
 @enduml
