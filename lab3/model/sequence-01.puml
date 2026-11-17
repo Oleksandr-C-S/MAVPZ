@@ -1,6 +1,4 @@
 @startuml
-' Lab3 — UC-02 / SC-02: Успішне створення бронювання
-' Чернетка для аналізу та перевірки студентом
 
 title UC-02 / SC-02 — Успішне створення бронювання
 
@@ -33,17 +31,17 @@ Repo -> DB : beginTransactionAndLockRoom(301)
 activate DB
 DB --> Repo : transactionOpened
 Repo -> DB : findBlockingBookings(301, 10:00, 11:00)
-DB --> Repo : [] (немає перетинів)
-Repo --> Service : available=true
+DB --> Repo : blockingBookings
+Repo --> Service : availabilityResult (true = вільна, false = зайнята)
 
-alt аудиторія доступна (основний шлях SC-02)
+alt availabilityResult == true (SC-02)
     Service -> Repo : insertBooking(userId, 301, 10:00, 11:00, Pending)
     Repo -> DB : INSERT Booking(user_id, room_id, starts_at, ends_at, status_id)
     DB --> Repo : bookingId
     Repo -> DB : commitTransaction()
     DB --> Repo : committed
     Repo --> Service : bookingCreated(bookingId)
-else конфлікт на актуальних даних (захисна гілка; SC-03/SC-07)
+else availabilityResult == false
     Service -> Repo : rollbackTransaction()
     Repo -> DB : rollbackTransaction()
     DB --> Repo : rolledBack

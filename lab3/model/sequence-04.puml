@@ -1,6 +1,4 @@
 @startuml
-' Lab3 — UC-02 / SC-08: Суміжні інтервали дозволені
-' Основа: lab2/gherkin.md — SC-08
 
 title UC-02 / SC-08 — Суміжні інтервали без конфлікту
 
@@ -34,8 +32,8 @@ Repo -> DB : beginTransactionAndLockRoom(301)
 activate DB
 DB --> Repo : transactionOpened
 Repo -> DB : findBlockingBookings(301, 11:00, 12:00)
-DB --> Repo : [] (10:00–11:00 не перетинається)
-Repo --> Service : available=true
+DB --> Repo : blockingBookings
+Repo --> Service : availabilityResult (true = вільна, false = зайнята)
 
 note over Service,DB
 Перетин існує лише коли
@@ -44,14 +42,14 @@ newStart < oldEnd AND oldStart < newEnd.
 11:00 < 11:00 — false, отже конфлікту немає.
 end note
 
-alt немає перетину (основний шлях SC-08)
+alt availabilityResult == true (SC-08)
     Service -> Repo : insertBooking(userId, 301, 11:00, 12:00, Pending)
     Repo -> DB : INSERT Booking(user_id, room_id, starts_at, ends_at, status_id)
     DB --> Repo : bookingId
     Repo -> DB : commitTransaction()
     DB --> Repo : committed
     Repo --> Service : bookingCreated(bookingId)
-else знайдено реальний перетин (захисна гілка)
+else availabilityResult == false
     Service -> Repo : rollbackTransaction()
     Repo -> DB : rollbackTransaction()
     DB --> Repo : rolledBack

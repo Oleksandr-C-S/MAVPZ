@@ -1,6 +1,4 @@
 @startuml
-' Lab3 — UC-02 / SC-03: Конфлікт при підтвердженні
-' Технічна чернетка: звірити з lab2/gherkin.md і lab2/requirements.md
 
 title UC-02 / SC-03 — Конфлікт бронювання
 
@@ -33,17 +31,17 @@ Repo -> DB : beginTransactionAndLockRoom(301)
 activate DB
 DB --> Repo : transactionOpened
 Repo -> DB : findBlockingBookings(301, 10:30, 11:30)
-DB --> Repo : [Booking(Confirmed, 10:00–11:00, blocks_room=true)]
-Repo --> Service : blockingBookingsFound
+DB --> Repo : blockingBookings
+Repo --> Service : availabilityResult (true = вільна, false = зайнята)
 
-alt блокуюче бронювання перетинається (основний шлях SC-03)
+alt availabilityResult == false (SC-03)
     Service -> Repo : rollbackTransaction()
     Repo -> DB : rollbackTransaction()
     DB --> Repo : rolledBack
     Repo --> Service : noBookingCreated
     Service --> UI : bookingConflict(roomId=301)
     UI --> User : showConflictMessage()
-else немає перетину (захисна альтернативна гілка; не SC-03)
+else availabilityResult == true
     Service -> Repo : insertBooking(userId, 301, 10:30, 11:30, Pending)
     Repo -> DB : INSERT Booking(...)
     DB --> Repo : bookingId

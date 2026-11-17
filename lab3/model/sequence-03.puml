@@ -1,6 +1,4 @@
 @startuml
-' Lab3 — UC-02 / SC-07: Втрата доступності між пошуком і підтвердженням
-' Чернетка діаграми, узгоджена з lab2/gherkin.md (SC-07)
 
 title UC-02 / SC-07 — Аудиторію зайняли після пошуку
 
@@ -82,17 +80,17 @@ Repo -> DB : beginTransactionAndLockRoom(301)
 activate DB
 DB --> Repo : transactionOpened
 Repo -> DB : findBlockingBookings(301, 10:00, 11:00)
-DB --> Repo : [Booking(bookingId2, Pending, blocks_room=true)]
-Repo --> Service : blockingBookingsFound
+DB --> Repo : blockingBookings
+Repo --> Service : availabilityResult (true = вільна, false = зайнята)
 
-alt доступність втрачено (основний шлях SC-07)
+alt availabilityResult == false (SC-07)
     Service -> Repo : rollbackTransaction()
     Repo -> DB : rollbackTransaction()
     DB --> Repo : rolledBack
     Repo --> Service : noBookingCreated
     Service --> UI : roomNoLongerAvailable(301)
     UI --> User1 : showAvailabilityLostMessage()
-else аудиторія все ще вільна (альтернативний шлях)
+else availabilityResult == true
     Service -> Repo : insertBooking(userId1, 301, 10:00, 11:00, Pending)
     Repo -> DB : INSERT Booking(...)
     DB --> Repo : bookingId1
