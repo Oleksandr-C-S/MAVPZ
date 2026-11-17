@@ -1,0 +1,73 @@
+@startuml
+title UC-02 — Створення бронювання аудиторії (чернетка)
+
+|Користувач|
+start
+:Вибрати аудиторію та часовий інтервал;
+:Підтвердити бронювання\nconfirmBooking();
+
+|Інтерфейс бронювання|
+:Передати запит createBooking();
+
+|BookingService|
+' Паралельна перевірка і тайм-аут — пропозиції для узгодження.
+fork
+  :Надіслати сервісу автентифікації\nvalidateSession(session); <<sendSignal>>
+  :Прийняти результат автентифікації\nвід Auth або подію тайм-ауту; <<acceptEvent>>
+  :Зберегти результат перевірки сесії;
+fork again
+  :Перевірити початок і кінець інтервалу\n(start < end);
+end fork
+
+if (Сесія дійсна і інтервал коректний?) then (так)
+  |BookingRepository / БД|
+  :beginTransactionAndLockRoom();
+  :findBlockingBookings();
+  note right
+    Враховуються Pending та Confirmed.
+    Перетин: newStart < oldEnd
+    AND oldStart < newEnd.
+    Суміжні інтервали не конфліктують.
+  end note
+  :Повернути availabilityResult;
+  |BookingService|
+  if (Аудиторія доступна?) then (так)
+    |BookingRepository / БД|
+    :insertBooking(..., Pending);
+    :commitTransaction();
+    |BookingService|
+    :Повернути bookingCreated(bookingId);
+    |Інтерфейс бронювання|
+    :Надіслати користувачу\nshowConfirmation(bookingId); <<sendSignal>>
+  else (ні)
+    |BookingRepository / БД|
+    :rollbackTransaction();
+    |BookingService|
+    if (Аудиторія була вільна\nв результаті пошуку?) then (так)
+      :Повернути roomNoLongerAvailable();
+      |Інтерфейс бронювання|
+      :Надіслати користувачу\nshowAvailabilityLostMessage(); <<sendSignal>>
+    else (ні)
+      |BookingService|
+      :Повернути bookingConflict();
+      |Інтерфейс бронювання|
+      :Надіслати користувачу\nshowConflictMessage(); <<sendSignal>>
+    endif
+  endif
+else (ні)
+  |BookingService|
+  :Відхилити запит без транзакції; 
+  |Інтерфейс бронювання|
+  :Повідомити про помилку сесії,\nтайм-аут або некоректний інтервал; <<sendSignal>>
+endif
+|Користувач|
+:Отримати результат бронювання; <<acceptEvent>>
+stop
+
+legend bottom
+  Підтвердження, конфлікт і втрата доступності — з Lab3.
+  Паралельна локальна перевірка інтервалу,
+  обробка недійсної сесії та тайм-ауту — пропозиції.
+  Користувацьке повідомлення не потребує відповіді.
+endlegend
+@enduml
