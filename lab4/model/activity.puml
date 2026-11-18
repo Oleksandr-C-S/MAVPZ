@@ -7,7 +7,7 @@ start
 :Підтвердити бронювання\nconfirmBooking();
 
 |Інтерфейс бронювання|
-:Передати запит createBooking();
+:Передати запит createBooking(session, roomId, start, end);
 
 |BookingService|
 ' Паралельна перевірка і тайм-аут — пропозиції для узгодження.
@@ -15,6 +15,7 @@ fork
   :Надіслати сервісу автентифікації\nvalidateSession(session); <<sendSignal>>
   :Прийняти результат автентифікації\nвід Auth або подію тайм-ауту; <<acceptEvent>>
   :Зберегти результат перевірки сесії;
+  :Для дійсної сесії зберегти підтверджений userId;
 fork again
   :Перевірити початок і кінець інтервалу\n(start < end);
 end fork
@@ -33,7 +34,7 @@ if (Сесія дійсна і інтервал коректний?) then (та�
   |BookingService|
   if (Аудиторія доступна?) then (так)
     |BookingRepository / БД|
-    :insertBooking(..., Pending);
+    :insertBooking(userId, roomId, start, end, Pending);
     :commitTransaction();
     |BookingService|
     :Повернути bookingCreated(bookingId);
