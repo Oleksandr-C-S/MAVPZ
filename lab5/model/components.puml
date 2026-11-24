@@ -1,12 +1,17 @@
 @startuml
 
-left to right direction
-skinparam componentStyle uml2
+top to bottom direction
+skinparam componentStyle rectangle
 skinparam shadowing false
 skinparam packageStyle rectangle
 skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 42
+skinparam defaultFontSize 13
+skinparam ArrowFontSize 11
+hide stereotype
 
-title UC-02 — Архітектура системи бронювання навчальних аудиторій
+title Архітектура системи бронювання навчальних аудиторій (UC-02)
 
 actor "Студент / Викладач" as User
 
@@ -18,61 +23,38 @@ rectangle "Система бронювання аудиторій\n(межа с�
   component "AuthenticationAdapter" as AuthAdapter
   component "BookingRepository\n(Data Access)" as BookingRepo
   component "RoomRepository\n(Data Access)" as RoomRepo
-  database "Booking Database\n(User, Room, Booking,\nBookingStatus, Equipment,\nRoomEquipment)" as DB
+  database "Booking Database\nUser, Room, Booking,\nBookingStatus, Equipment, RoomEquipment" as DB
 
-  interface "IBookingApi" as IApi
-  interface "IBookingService" as IBooking
-  interface "IAvailabilityService" as IAvail
-  interface "IAuthentication" as IAuth
-  interface "IBookingRepository" as IBookingRepo
-  interface "IRoomRepository" as IRoomRepo
+  ' Контракти на стрілках: зліва — required; справа — provided.
+  UI -down-> API : IBookingApi
+  API -down-> BookingSvc : IBookingService
+  BookingSvc -down-> AvailSvc : IAvailabilityService
+  BookingSvc -down-> AuthAdapter : IAuthentication
+  BookingSvc -down-> BookingRepo : IBookingRepository
+  AvailSvc -down-> RoomRepo : IRoomRepository
 
-  API - IApi : надає
-  UI ..> IApi : використовує
+  AvailSvc ..> BookingRepo : IBookingRepository\n(блокуючі Booking)
+  BookingSvc ..> RoomRepo : IRoomRepository
 
-  BookingSvc - IBooking : надає
-  API ..> IBooking : використовує
-
-  AvailSvc - IAvail : надає
-  BookingSvc ..> IAvail : використовує
-
-  AuthAdapter - IAuth : надає
-  BookingSvc ..> IAuth : використовує
-
-  BookingRepo - IBookingRepo : надає
-  BookingSvc ..> IBookingRepo : використовує
-  AvailSvc ..> IBookingRepo : читає блокуючі записи
-
-  RoomRepo - IRoomRepo : надає
-  BookingSvc ..> IRoomRepo : використовує
-  AvailSvc ..> IRoomRepo : перевіряє аудиторію
-
-  BookingRepo --> DB : SQL / транзакції
-  RoomRepo --> DB : SQL / запити
+  BookingRepo -down-> DB : SQL / транзакції
+  RoomRepo -down-> DB : SQL / запити
 }
 
-cloud "Університетський\nсервіс автентифікації\n(зовнішня система)" as ExtAuth
-
-User --> UI : пошук / підтвердження
-AuthAdapter ..> ExtAuth : validateSession(session)
-ExtAuth ..> AuthAdapter : valid(userId) / invalid / timeout
+cloud "Університетський сервіс\nавтентифікації\n(зовнішня система)" as ExtAuth
+User -down-> UI : пошук / бронювання
+AuthAdapter -right-> ExtAuth : validateSession(session)\nvalid(userId) / invalid / timeout
 
 note right of BookingSvc
   UC-02: створення бронювання.
-  Перед збереженням повторно перевіряє
-  доступність (REQ-02A).
-  Успішний новий Booking: Pending.
-end note
-
-note bottom of DB
-  Імена сутностей відповідають Lab1.
-  BookingStatus.blocks_room визначає,
-  які бронювання спричиняють конфлікт.
+  Повторна перевірка доступності
+  перед записом (REQ-02A).
+  Початковий статус: Pending.
 end note
 
 legend bottom
-  Суцільне з'єднання з інтерфейсом: компонент надає інтерфейс.
-  Пунктирна стрілка: компонент потребує / використовує інтерфейс.
-  Хмара за межею системи: зовнішня інтеграція.
+  Назва на стрілці — контракт між компонентами.
+  Джерело стрілки потребує інтерфейс (required).
+  Ціль стрілки надає інтерфейс (provided).
+  Зовнішня автентифікація — поза межею системи.
 endlegend
 @enduml
