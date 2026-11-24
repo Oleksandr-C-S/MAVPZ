@@ -1,0 +1,78 @@
+@startuml
+
+left to right direction
+skinparam componentStyle uml2
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+title UC-02 — Архітектура системи бронювання навчальних аудиторій
+
+actor "Студент / Викладач" as User
+
+rectangle "Система бронювання аудиторій\n(межа системи)" as System {
+  component "Web UI" as UI
+  component "Booking API" as API
+  component "BookingService" as BookingSvc
+  component "AvailabilityService" as AvailSvc
+  component "AuthenticationAdapter" as AuthAdapter
+  component "BookingRepository\n(Data Access)" as BookingRepo
+  component "RoomRepository\n(Data Access)" as RoomRepo
+  database "Booking Database\n(User, Room, Booking,\nBookingStatus, Equipment,\nRoomEquipment)" as DB
+
+  interface "IBookingApi" as IApi
+  interface "IBookingService" as IBooking
+  interface "IAvailabilityService" as IAvail
+  interface "IAuthentication" as IAuth
+  interface "IBookingRepository" as IBookingRepo
+  interface "IRoomRepository" as IRoomRepo
+
+  API - IApi : надає
+  UI ..> IApi : використовує
+
+  BookingSvc - IBooking : надає
+  API ..> IBooking : використовує
+
+  AvailSvc - IAvail : надає
+  BookingSvc ..> IAvail : використовує
+
+  AuthAdapter - IAuth : надає
+  BookingSvc ..> IAuth : використовує
+
+  BookingRepo - IBookingRepo : надає
+  BookingSvc ..> IBookingRepo : використовує
+  AvailSvc ..> IBookingRepo : читає блокуючі записи
+
+  RoomRepo - IRoomRepo : надає
+  BookingSvc ..> IRoomRepo : використовує
+  AvailSvc ..> IRoomRepo : перевіряє аудиторію
+
+  BookingRepo --> DB : SQL / транзакції
+  RoomRepo --> DB : SQL / запити
+}
+
+cloud "Університетський\nсервіс автентифікації\n(зовнішня система)" as ExtAuth
+
+User --> UI : пошук / підтвердження
+AuthAdapter ..> ExtAuth : validateSession(session)
+ExtAuth ..> AuthAdapter : valid(userId) / invalid / timeout
+
+note right of BookingSvc
+  UC-02: створення бронювання.
+  Перед збереженням повторно перевіряє
+  доступність (REQ-02A).
+  Успішний новий Booking: Pending.
+end note
+
+note bottom of DB
+  Імена сутностей відповідають Lab1.
+  BookingStatus.blocks_room визначає,
+  які бронювання спричиняють конфлікт.
+end note
+
+legend bottom
+  Суцільне з'єднання з інтерфейсом: компонент надає інтерфейс.
+  Пунктирна стрілка: компонент потребує / використовує інтерфейс.
+  Хмара за межею системи: зовнішня інтеграція.
+endlegend
+@enduml
