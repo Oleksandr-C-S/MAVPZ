@@ -23,7 +23,7 @@
 | `RoomRepository` | Надає дані про аудиторії з бази даних |
 | `Booking Database` | Зберігає сутності предметної області з першої лабораторної |
 
-`Booking Database` містить `User`, `Room`, `Booking`, `BookingStatus`, `Equipment` і `RoomEquipment`. Сервіси не звертаються до таблиць напряму: для цього використовуються репозиторії.
+`Booking Database` містить `User`, `Building`, `Room`, `Booking`, `BookingStatus`, `Equipment` і `RoomEquipment`. Сервіси не звертаються до таблиць напряму: для цього використовуються репозиторії.
 
 ## 3. Інтерфейси та залежності
 

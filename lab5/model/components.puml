@@ -23,7 +23,7 @@ rectangle "Система бронювання аудиторій\n(межа с�
   component "AuthenticationAdapter" as AuthAdapter
   component "BookingRepository\n(Data Access)" as BookingRepo
   component "RoomRepository\n(Data Access)" as RoomRepo
-  database "Booking Database\nUser, Room, Booking,\nBookingStatus, Equipment, RoomEquipment" as DB
+  database "Booking Database\nUser, Building, Room, Booking,\nBookingStatus, Equipment, RoomEquipment" as DB
 
   ' Контракти на стрілках: зліва — required; справа — provided.
   UI -down-> API : IBookingApi
