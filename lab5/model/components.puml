@@ -25,16 +25,31 @@ rectangle "Система бронювання аудиторій\n(межа с�
   component "RoomRepository\n(Data Access)" as RoomRepo
   database "Booking Database\nUser, Building, Room, Booking,\nBookingStatus, Equipment, RoomEquipment" as DB
 
-  ' Контракти на стрілках: зліва — required; справа — provided.
-  UI -down-> API : IBookingApi
-  API -down-> BookingSvc : IBookingService
-  BookingSvc -down-> AvailSvc : IAvailabilityService
-  BookingSvc -down-> AuthAdapter : IAuthentication
-  BookingSvc -down-> BookingRepo : IBookingRepository
-  AvailSvc -down-> RoomRepo : IRoomRepository
+  ' Явні UML-інтерфейси: реалізація (provided) та використання (required).
+  interface "IBookingApi" as IBookingApi
+  interface "IBookingService" as IBookingService
+  interface "IAvailabilityService" as IAvailabilityService
+  interface "IAuthentication" as IAuthentication
+  interface "IBookingRepository" as IBookingRepository
+  interface "IRoomRepository" as IRoomRepository
 
-  AvailSvc ..> BookingRepo : IBookingRepository\n(блокуючі Booking)
-  BookingSvc ..> RoomRepo : IRoomRepository
+  ' Реалізація інтерфейсу компонентом (provided).
+  API ..|> IBookingApi
+  BookingSvc ..|> IBookingService
+  AvailSvc ..|> IAvailabilityService
+  AuthAdapter ..|> IAuthentication
+  BookingRepo ..|> IBookingRepository
+  RoomRepo ..|> IRoomRepository
+
+  ' Залежність компонента від контракту (required).
+  UI ..> IBookingApi : required
+  API ..> IBookingService : required
+  BookingSvc ..> IAvailabilityService : required
+  BookingSvc ..> IAuthentication : required
+  BookingSvc ..> IBookingRepository : required
+  AvailSvc ..> IBookingRepository : required (блокуючі Booking)
+  AvailSvc ..> IRoomRepository : required
+  BookingSvc ..> IRoomRepository : required
 
   BookingRepo -down-> DB : SQL / транзакції
   RoomRepo -down-> DB : SQL / запити
@@ -52,9 +67,8 @@ note right of BookingSvc
 end note
 
 legend bottom
-  Назва на стрілці — контракт між компонентами.
-  Джерело стрілки потребує інтерфейс (required).
-  Ціль стрілки надає інтерфейс (provided).
+  Пунктирна стрілка ..> до інтерфейсу: required.
+  Реалізація ..|> інтерфейсу: provided.
   Зовнішня автентифікація — поза межею системи.
 endlegend
 @enduml
