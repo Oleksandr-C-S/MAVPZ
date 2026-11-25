@@ -47,11 +47,13 @@ rectangle "Система бронювання аудиторій\n(межа с�
   BookingSvc ..> IAvailabilityService : required
   BookingSvc ..> IAuthentication : required
   BookingSvc ..> IBookingRepository : required
+  ' Атомарне створення: BookingService викликає контракт репозиторію.
   AvailSvc ..> IBookingRepository : required (блокуючі Booking)
   AvailSvc ..> IRoomRepository : required
   BookingSvc ..> IRoomRepository : required
 
-  BookingRepo -down-> DB : SQL / транзакції
+  BookingRepo -down-> DB : транзакція + повторна перевірка
+  ' Перевірка blockingBookings і INSERT виконуються в одній транзакції.
   RoomRepo -down-> DB : SQL / запити
 }
 
@@ -61,9 +63,19 @@ AuthAdapter -right-> ExtAuth : validateSession(session)\nvalid(userId) / invalid
 
 note right of BookingSvc
   UC-02: створення бронювання.
-  Повторна перевірка доступності
-  перед записом (REQ-02A).
+  Координує UC-02:
+  викликає createBookingAtomically(
+    userId, roomId, start, end, Pending).
   Початковий статус: Pending.
+end note
+
+note right of BookingRepo
+  Власник атомарної операції (REQ-02A):
+  beginTransaction(), lockRoom(roomId),
+  checkBlockingBookings(roomId, start, end),
+  insertBooking(..., Pending) / rollback,
+  commitTransaction().
+  Уся послідовність — одна транзакція.
 end note
 
 legend bottom
