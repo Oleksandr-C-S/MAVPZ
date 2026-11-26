@@ -3,75 +3,78 @@
 top to bottom direction
 skinparam componentStyle rectangle
 skinparam shadowing false
-skinparam linetype ortho
 skinparam packageStyle rectangle
-skinparam nodesep 65
-skinparam ranksep 65
-skinparam defaultFontSize 15
-skinparam ArrowFontSize 12
+skinparam linetype polyline
+skinparam nodesep 32
+skinparam ranksep 46
+skinparam defaultFontSize 13
+skinparam ArrowFontSize 11
 hide stereotype
 
-title Архітектура бронювання навчальних аудиторій — UC-02
+title Компоненти системи бронювання аудиторій (UC-02)
 
-actor "Студент / Викладач" as User
+actor "Студент / викладач" as User
 
-rectangle "Система бронювання аудиторій" as System {
-  ' Рівень інтерфейсу
-  component "Web UI" as UI
-  interface "IBookingApi" as IBookingApi
-  component "Booking API" as API
-  interface "IBookingService" as IBookingService
-  component "BookingService" as BookingSvc
+rectangle "Система бронювання аудиторій" {
+  package "1. Інтерфейс та API" {
+    component "Web UI" as UI
+    interface "IBookingApi" as IApi
+    component "Booking API" as API
+  }
 
-  ' Сервіси і адаптери
-  interface "IAvailabilityService" as IAvailabilityService
-  component "AvailabilityService" as AvailSvc
-  interface "IAuthentication" as IAuthentication
-  component "AuthenticationAdapter" as AuthAdapter
+  package "2. Бізнес-логіка та інтеграція" {
+    interface "IBookingService" as IBooking
+    component "BookingService" as BookingSvc
+    interface "IAvailabilityService" as IAvail
+    component "AvailabilityService" as AvailSvc
+    interface "IAuthentication" as IAuth
+    component "AuthenticationAdapter" as AuthAdapter
+  }
 
-  ' Рівень даних
-  interface "IBookingRepository" as IBookingRepository
-  component "BookingRepository" as BookingRepo
-  interface "IRoomRepository" as IRoomRepository
-  component "RoomRepository" as RoomRepo
-  database "Booking Database\nUser, Building, Room, Booking,\nBookingStatus, Equipment, RoomEquipment" as DB
+  package "3. Доступ до даних" {
+    interface "IBookingRepository" as IBookingRepo
+    component "BookingRepository" as BookingRepo
+    interface "IRoomRepository" as IRoomRepo
+    component "RoomRepository" as RoomRepo
+    database "Booking Database\nUser, Building, Room, Booking,\nBookingStatus, Equipment, RoomEquipment" as DB
+  }
 
-  ' required — залежність споживача від контракту
-  UI ..> IBookingApi
-  API ..> IBookingService
-  BookingSvc ..> IAvailabilityService
-  BookingSvc ..> IAuthentication
-  BookingSvc ..> IBookingRepository
-  BookingSvc ..> IRoomRepository
-  AvailSvc ..> IBookingRepository : читання blockingBookings
-  AvailSvc ..> IRoomRepository : дані Room
+  ' required: компонент залежить від контракту
+  UI ..> IApi
+  API ..> IBooking
+  BookingSvc ..> IAvail
+  BookingSvc ..> IAuth
+  BookingSvc ..> IBookingRepo
+  BookingSvc ..> IRoomRepo
+  AvailSvc ..> IBookingRepo
+  AvailSvc ..> IRoomRepo
 
-  ' provided — реалізація контракту
-  API ..|> IBookingApi
-  BookingSvc ..|> IBookingService
-  AvailSvc ..|> IAvailabilityService
-  AuthAdapter ..|> IAuthentication
-  BookingRepo ..|> IBookingRepository
-  RoomRepo ..|> IRoomRepository
+  ' provided: компонент реалізує контракт
+  API ..|> IApi
+  BookingSvc ..|> IBooking
+  AvailSvc ..|> IAvail
+  AuthAdapter ..|> IAuth
+  BookingRepo ..|> IBookingRepo
+  RoomRepo ..|> IRoomRepo
 
-  ' Фізичне збереження: окремо від контрактів
-  BookingRepo -down-> DB : транзакція + повторна перевірка
-  RoomRepo -down-> DB : SQL / запити
+  ' Тільки репозиторії звертаються безпосередньо до БД
+  BookingRepo --> DB
+  RoomRepo --> DB
 }
 
-cloud "Університетська\nавтентифікація\n(зовнішня система)" as ExtAuth
-User --> UI : пошук / бронювання
+cloud "Університетський сервіс\nавтентифікації\n(зовнішній)" as ExtAuth
+User --> UI
 AuthAdapter --> ExtAuth : validateSession(session)
 
-note bottom of BookingRepo
-  REQ-02A: createBookingAtomically(...)
-  begin / lockRoom / checkBlockingBookings
-  insert Pending + commit або rollback
+note right of BookingRepo
+  REQ-02A: у межах однієї транзакції
+  блокування аудиторії → повторна перевірка
+  конфліктів → INSERT Pending → commit;
+  у разі помилки — rollback.
 end note
 
 legend bottom
-  ..> required — компонент використовує інтерфейс
-  ..|> provided — компонент реалізує інтерфейс
-  BookingService координує UC-02; BookingRepository гарантує атомарність
+  ..> required: споживає інтерфейс
+  ..|> provided: реалізує інтерфейс
 endlegend
 @enduml
