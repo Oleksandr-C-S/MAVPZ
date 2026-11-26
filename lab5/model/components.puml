@@ -67,10 +67,26 @@ User --> UI
 AuthAdapter --> ExtAuth : validateSession(session)
 
 note right of BookingRepo
-  REQ-02A: у межах однієї транзакції
-  блокування аудиторії → повторна перевірка
-  конфліктів → INSERT Pending → commit;
-  у разі помилки — rollback.
+  REQ-02A / Lab3:
+  BookingService -> BookingRepository:
+  beginAtomicBooking(roomId, start, end)
+  Repo -> DB: beginTransactionAndLockRoom(roomId)
+  Repo -> DB: findBlockingBookings(...)
+  Repo -> BookingService: availabilityResult
+  BookingService вирішує наступний виклик:
+  якщо вільно -> Repo.insertBooking(..., Pending)
+  Repo -> DB: INSERT і commitTransaction()
+  інакше -> Repo.rollbackTransaction()
+  Усе в межах однієї транзакції.
+end note
+
+note right of AuthAdapter
+  validateSession(session)
+  valid(userId) / invalid / timeout
+  Lab3 показує прямий логічний виклик
+  BookingService -> Auth;
+  тут зовнішню інтеграцію винесено
+  в AuthenticationAdapter (Lab4).
 end note
 
 legend bottom

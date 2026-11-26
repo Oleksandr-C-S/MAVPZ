@@ -28,7 +28,7 @@
 | Шлях | Вміст |
 |---|---|
 | [`model/components.puml`](model/components.puml) | Вихідний текст UML Component Diagram |
-| [`renders/components.png`](renders/components.png) | Зображення діаграми, згенероване з PlantUML |
+| `renders/components.png` | PNG слід згенерувати з актуального `model/components.puml` у VS Code перед комітом |
 | [`spec.md`](spec.md) | Компоненти, інтерфейси, межі та архітектурні рішення |
 | [`AUDIT.md`](AUDIT.md) | Перевірка відповідності й три виправлення |
 | [`DEFENSE.md`](DEFENSE.md) | Пояснення архітектури для захисту |
@@ -38,7 +38,7 @@
 
 - **Lab1:** збережено перелік сутностей ER-моделі та правило `BookingStatus.blocks_room`.
 - **Lab2:** підтримано UC-02 та REQ-02A — атомарну повторну перевірку доступності.
-- **Lab3:** компонентні залежності підтримують послідовність UI → сервіс → репозиторій → база даних; перевірка сесії відбувається через зовнішній сервіс.
+- **Lab3:** компонентні залежності підтримують beginAtomicBooking → insertBooking/rollbackTransaction; в Lab3 Auth — логічний учасник, у Lab5 доступ до нього деталізовано через AuthenticationAdapter.
 - **Lab4:** передбачено обробку успішного підтвердження, конфлікту та відмови/тайм-ауту автентифікації.
 
 ## Аудит та зміни
@@ -50,3 +50,11 @@
 | AUD-03 | Уточнено атомарне створення бронювання в `BookingRepository` | `95f1327` |
 | Рендер | PNG оновлено після виправлень | `62d89d5` |
 
+
+## Уточнення після відгуку AI-CHECK
+
+Після фінального компонування повернено примітки з деталями транзакції Lab3 (`beginAtomicBooking`, `beginTransactionAndLockRoom`, `insertBooking` або `rollbackTransaction`) і результатами зовнішньої автентифікації (`valid(userId)`, `invalid`, `timeout`). Зміни треба відрендерити в PlantUML, оновити PNG та записати справжній SHA у `AUDIT.md`. `spec.md` і `DEFENSE.md` на цьому етапі — чернетки: їхній остаточний текст студент має підготувати самостійно за вимогою викладача.
+
+## Уточнення після зауважень викладача
+
+Для узгодженості з Lab3 `BookingService` координує `beginAtomicBooking` → `insertBooking` або `rollbackTransaction`, а `BookingRepository` відповідає за операції всередині транзакції. Зовнішню перевірку сесії з Lab3 у компонентній моделі обслуговує `AuthenticationAdapter`.
