@@ -4,93 +4,89 @@ top to bottom direction
 skinparam componentStyle rectangle
 skinparam shadowing false
 skinparam packageStyle rectangle
-skinparam linetype polyline
-skinparam nodesep 32
-skinparam ranksep 46
-skinparam defaultFontSize 13
-skinparam ArrowFontSize 11
-hide stereotype
+skinparam linetype ortho
+skinparam nodesep 38
+skinparam ranksep 50
+skinparam defaultFontSize 12
+skinparam ArrowFontSize 10
 
-title Компоненти системи бронювання аудиторій (UC-02)
-
+title Component Diagram — система бронювання аудиторій (UC-02)
 actor "Студент / викладач" as User
 
-rectangle "Система бронювання аудиторій" {
-  package "1. Інтерфейс та API" {
-    component "Web UI" as UI
-    interface "IBookingApi" as IApi
-    component "Booking API" as API
+rectangle "Система бронювання аудиторій" as System {
+  component "Web UI" as UI
+  rectangle "Backend — межа портів" as Backend {
+    package "Порти та API" {
+      component "HTTP вхід" as HttpIn <<port>>
+      component "Booking API" as API
+      interface "IBookingApi" as IApi
+    }
+    package "Бізнес-логіка та адаптер" {
+      component "BookingService" as BookingSvc
+      interface "IBookingService" as IBooking
+      component "AvailabilityService" as AvailSvc
+      interface "IAvailabilityService" as IAvail
+      component "AuthenticationAdapter" as AuthAdapter
+      interface "IAuthentication" as IAuth
+      component "Вихід Auth" as AuthOut <<port>>
+    }
+    package "Доступ до даних" {
+      component "BookingRepository" as BookingRepo
+      interface "IBookingRepository" as IBookingRepo
+      component "RoomRepository" as RoomRepo
+      interface "IRoomRepository" as IRoomRepo
+    }
   }
-
-  package "2. Бізнес-логіка та інтеграція" {
-    interface "IBookingService" as IBooking
-    component "BookingService" as BookingSvc
-    interface "IAvailabilityService" as IAvail
-    component "AvailabilityService" as AvailSvc
-    interface "IAuthentication" as IAuth
-    component "AuthenticationAdapter" as AuthAdapter
-  }
-
-  package "3. Доступ до даних" {
-    interface "IBookingRepository" as IBookingRepo
-    component "BookingRepository" as BookingRepo
-    interface "IRoomRepository" as IRoomRepo
-    component "RoomRepository" as RoomRepo
-    database "Booking Database\nUser, Building, Room, Booking,\nBookingStatus, Equipment, RoomEquipment" as DB
-  }
-
-  ' required: компонент залежить від контракту
-  UI ..> IApi
-  API ..> IBooking
-  BookingSvc ..> IAvail
-  BookingSvc ..> IAuth
-  BookingSvc ..> IBookingRepo
-  BookingSvc ..> IRoomRepo
-  AvailSvc ..> IBookingRepo
-  AvailSvc ..> IRoomRepo
-
-  ' provided: компонент реалізує контракт
-  API ..|> IApi
-  BookingSvc ..|> IBooking
-  AvailSvc ..|> IAvail
-  AuthAdapter ..|> IAuth
-  BookingRepo ..|> IBookingRepo
-  RoomRepo ..|> IRoomRepo
-
-  ' Тільки репозиторії звертаються безпосередньо до БД
-  BookingRepo --> DB
-  RoomRepo --> DB
+  database "Booking Database\nUser, Building, Room, Booking,\nBookingStatus, Equipment, RoomEquipment" as DB
 }
+component "Університетський сервіс\nавтентифікації" as ExtAuth <<external>>
+interface "ISessionValidation" as ISessionValidation
 
-cloud "Університетський сервіс\nавтентифікації\n(зовнішній)" as ExtAuth
 User --> UI
-AuthAdapter --> ExtAuth : validateSession(session)
+UI --> HttpIn : HTTP
+HttpIn --> API : запити UC-02
+UI ..> IApi
+API ..|> IApi
+API ..> IBooking
+BookingSvc ..|> IBooking
+BookingSvc ..> IAvail
+AvailSvc ..|> IAvail
+BookingSvc ..> IAuth
+AuthAdapter ..|> IAuth
+BookingSvc ..> IBookingRepo
+BookingSvc ..> IRoomRepo
+AvailSvc ..> IBookingRepo
+AvailSvc ..> IRoomRepo
+BookingRepo ..|> IBookingRepo
+RoomRepo ..|> IRoomRepo
+BookingRepo --> DB : транзакції / SQL
+RoomRepo --> DB : читання
+AuthAdapter --> AuthOut : validateSession(session)
+AuthOut ..> ISessionValidation : required
+ExtAuth ..|> ISessionValidation : provided
 
 note right of BookingRepo
-  REQ-02A / Lab3:
-  BookingService -> BookingRepository:
-  beginAtomicBooking(roomId, start, end)
-  Repo -> DB: beginTransactionAndLockRoom(roomId)
-  Repo -> DB: findBlockingBookings(...)
-  Repo -> BookingService: availabilityResult
-  BookingService вирішує наступний виклик:
-  якщо вільно -> Repo.insertBooking(..., Pending)
-  Repo -> DB: INSERT і commitTransaction()
-  інакше -> Repo.rollbackTransaction()
-  Усе в межах однієї транзакції.
+  REQ-02A — як у Lab3:
+  BookingService викликає beginAtomicBooking(...).
+  BookingRepository: beginTransactionAndLockRoom(roomId),
+  findBlockingBookings(...), availabilityResult.
+  Якщо вільно: BookingService -> insertBooking(..., Pending),
+  а Repository виконує INSERT та commitTransaction().
+  Якщо конфлікт: BookingService -> rollbackTransaction().
+  Перевірка й запис належать одній транзакції.
 end note
 
 note right of AuthAdapter
-  validateSession(session)
-  valid(userId) / invalid / timeout
-  Lab3 показує прямий логічний виклик
-  BookingService -> Auth;
-  тут зовнішню інтеграцію винесено
-  в AuthenticationAdapter (Lab4).
+  validateSession(session):
+  valid(userId) / invalid / timeout.
+  Lab3: прямий логічний виклик Auth;
+  Lab5: інтеграція деталізована адаптером.
 end note
 
 legend bottom
-  ..> required: споживає інтерфейс
-  ..|> provided: реалізує інтерфейс
+  <<port>> — логічна точка входу / виходу Backend.
+  ..|> provided; ..> required.
+  ISessionValidation надає зовнішній компонент.
+  Booking Database — поза пакетом «Доступ до даних».
 endlegend
 @enduml
